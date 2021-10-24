@@ -2,6 +2,8 @@
 
 A lamp which changes colour based on the forecast weather for your area.
 
+![Screenshot](https://raw.githubusercontent.com/badmotorfinger/weather-lamp/master/lamp-img.jpg)
+
 ### Colour scheme for the top half of the lamp
 
 The top half of the lamp contains two LED's. The top-most LED changes colour depending on an average temperature calculated over the next 1 - 4 hours. 

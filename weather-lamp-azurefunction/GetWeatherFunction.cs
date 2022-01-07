@@ -37,13 +37,15 @@ namespace weather_lamp
             var oneToFourHourlyAverages = new
             {
                 averageTemp = Math.Round(oneToFourHours.Average(h => h.Temp), 2),
-                averagePrecip = Math.Round(oneToFourHours.Max(h => h.Pop), 2)
+                averagePrecip = Math.Round(oneToFourHours.Max(h => h.Pop), 2),
+                averageCloudCover = 0
             };
 
             var fourToEightHourlyAverages = new
             {
                 averageTemp = Math.Round(fourToEightHours.Average(h => h.Temp), 2),
-                averagePrecip = Math.Round(fourToEightHours.Max(h => h.Pop), 2)
+                averagePrecip = Math.Round(fourToEightHours.Max(h => h.Pop), 2),
+                averageCloudCover = 0
             };
 
             var result = new

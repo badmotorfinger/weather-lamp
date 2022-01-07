@@ -18,30 +18,32 @@ namespace weather_lamp
         [FunctionName("GetWeather")]
         public static async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = null)] HttpRequest req, ILogger log)
         {
-            if (req.Headers["special-key"] != "a random key to protect your azure function")
+            if (req.Headers["special-key"] != "OogZC#PFD$OxYgfXWZigj6Zh7a4gvRk0")
             {
                 return new OkResult();
             }
 
             var http = new HttpClient();
 
-            string response = await http.GetStringAsync("https://api.darksky.net/forecast/your darksky API key goes here/-33.808996764,151.000666664?exclude=minutely,flags&units=si");
+            var apikey = "YOUR API KEY";
+            
+            string response = await http.GetStringAsync($"https://api.openweathermap.org/data/2.5/onecall?lat=-33.81667&lon=151.0&units=metric&exclude=current,minutely,daily,alerts&appid={apikey}");
 
-            RootObject data = JsonConvert.DeserializeObject<RootObject>(response);
-
-            IEnumerable<HourlyForecast> oneToFourHours = data.Hourly.Data.Take(4);
-            IEnumerable<HourlyForecast> fourToEightHours = data.Hourly.Data.Skip(4).Take(4);
+            var data = Welcome3.FromJson(response);
+            
+            var oneToFourHours = data.Hourly.Take(4);
+            var fourToEightHours = data.Hourly.Skip(4).Take(4);
 
             var oneToFourHourlyAverages = new
             {
-                averageTemp = oneToFourHours.Average(h => h.Temperature),
-                averagePrecip = oneToFourHours.Max(h => h.PrecipProbability)
+                averageTemp = oneToFourHours.Average(h => h.Temp),
+                averagePrecip = oneToFourHours.Max(h => h.Pop)
             };
 
             var fourToEightHourlyAverages = new
             {
-                averageTemp = fourToEightHours.Average(h => h.Temperature),
-                averagePrecip = fourToEightHours.Max(h => h.PrecipProbability)
+                averageTemp = fourToEightHours.Average(h => h.Temp),
+                averagePrecip = fourToEightHours.Max(h => h.Pop)
             };
 
             var result = new

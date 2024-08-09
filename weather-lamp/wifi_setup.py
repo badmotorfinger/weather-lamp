@@ -14,8 +14,7 @@ def init_wifi():
     sta_if.active(True)
     time.sleep(1)
     print("Connecting to WiFi...")
-    # Put WiFi details in here
-    sta_if.connect('Access Point Name', 'Access Point Password')
+    sta_if.connect("Saturday Night Lotion", "$$xxxp37y6152b$$")
 
     while not sta_if.isconnected():
         print("Connecting...")

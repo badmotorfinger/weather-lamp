@@ -1,66 +1,79 @@
-import json
-
+import usocket
+import ujson as json
 from sky_colour import SkyColour
 
-
 class WeatherData:
-
     @staticmethod
     def get_weather():
-        rawWeatherData = WeatherData.__get_weather_data()
-        # print(rawWeatherData)
-        weatherDataStartIndex = rawWeatherData.index("{")
-        jsonResponse = rawWeatherData[weatherDataStartIndex:]
-        weather = json.loads(jsonResponse)
-        # print(weather)
-        oneToFourHours = weather["oneToFourHours"]
-        fourToEightHours = weather["fourToEightHours"]
-        # oneToFourHours = json.loads('{"averageCloudCover": 0.50, "averageTemp":40.6014, "averagePrecip": 0.17}')
-        # fourToEightHours = json.loads('{"averageCloudCover": 0.50, "averageTemp": 40.6014, "averagePrecip": 0.17}')
+        oneToFourHours, fourToEightHours = WeatherData.__get_weather_data()
 
-        temp1 = SkyColour.get_colour_for_temp(oneToFourHours["averageTemp"])
-        temp2 = SkyColour.get_colour_for_temp(fourToEightHours["averageTemp"])
-        sky1 = SkyColour.get_colour_for_skycondition(oneToFourHours["averageCloudCover"],
-                                                     oneToFourHours["averagePrecip"])
-        sky2 = SkyColour.get_colour_for_skycondition(fourToEightHours["averageCloudCover"],
-                                                     fourToEightHours["averagePrecip"])
-
-        return (temp1, temp2, sky1, sky2)
+        if oneToFourHours and fourToEightHours:
+            temp1 = SkyColour.get_colour_for_temp(oneToFourHours["averageTemp"])
+            temp2 = SkyColour.get_colour_for_temp(fourToEightHours["averageTemp"])
+            sky1 = SkyColour.get_colour_for_skycondition(oneToFourHours["averagePrecip"])
+            sky2 = SkyColour.get_colour_for_skycondition(fourToEightHours["averagePrecip"])
+            return (temp1, temp2, sky1, sky2)
+        else:
+            print("Incomplete weather data received.")
+            return None
 
     @staticmethod
     def __get_weather_data():
-        import usocket as _socket
-        import ussl as ssl
-
         print("Calling API to get weather")
-        url = "https://weather-at-home.azurewebsites.net/api/GetWeather"
+        url = "http://nodered.home.lan/weather-forecast"
+        response = WeatherData.__http_get(url)
+        if response:
+            return WeatherData.__process_weather_data(response)
+        else:
+            print("No response received.")
+            return None, None
 
+    @staticmethod
+    def __http_get(url):
         _, _, host, path = url.split("/", 3)
-        addr = _socket.getaddrinfo(host, 443)[0][-1]
-        s = _socket.socket()
-        print("Connecting to " + url)
-        s.connect(addr)
-        s = ssl.wrap_socket(s)
-
-        s.write(
-            bytes(
-                "GET /%s HTTP/1.0\r\nspecial-key:OogZC#PFD$OxYgfXWZigj6Zh7a4gvRk0\r\nAccept: */*\r\n User-Agent: WeatherLamp\r\nHost: %s\r\n\r\n"
-                % (path, host),
-                "utf8",
-            )
-        )
-
-        json = ""
-
-        print("Web request finished. Reading stream...")
-        while True:
-            data = s.read(128)
-
-            if data:
-                json = json + str(data, "utf-8")
-            else:
+        addr = None
+        # Resolve hostname with retry mechanism
+        for _ in range(3):
+            try:
+                addr = usocket.getaddrinfo(host, 80)[0][-1]
                 break
-        s.close()
-        print("Web socket closed")
-        print(json)
-        return json
+            except OSError as e:
+                print(f"Error resolving hostname: {e}")
+
+        if not addr:
+            print("Failed to resolve hostname after multiple attempts.")
+            return None
+
+        # Connect to server and retrieve data
+        s = usocket.socket()
+        try:
+            s.connect(addr)
+            request = f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+            s.send(request.encode('utf-8'))
+            response = b""
+            while True:
+                data = s.recv(128)
+                if data:
+                    response += data
+                else:
+                    break
+        except Exception as e:
+            print(f"Error during HTTP request: {e}")
+        finally:
+            s.close()
+
+        if response:
+            headers, json_data = response.split(b"\r\n\r\n", 1)
+            return json_data.decode('utf-8')
+        else:
+            return None
+
+    @staticmethod
+    def __process_weather_data(json_data):
+        try:
+            weather = json.loads(json_data)
+            print(weather)
+            return weather["oneToFourHours"], weather["fourToEightHours"]
+        except ValueError as e:  # Handling JSON errors with ValueError in ujson
+            print(f"Error processing weather data: {e}")
+            return None, None

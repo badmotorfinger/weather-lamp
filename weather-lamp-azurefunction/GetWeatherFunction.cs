@@ -25,7 +25,7 @@ namespace weather_lamp
 
             var http = new HttpClient();
 
-            var apikey = "YOUR API KEY";
+            var apikey = "d125a24ba4091a423306b2ac7357b01b";
             
             string response = await http.GetStringAsync($"https://api.openweathermap.org/data/2.5/onecall?lat=-33.81667&lon=151.0&units=metric&exclude=current,minutely,daily,alerts&appid={apikey}");
 

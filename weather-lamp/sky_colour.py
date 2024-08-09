@@ -1,43 +1,71 @@
+import usocket
+import ujson as json
 import math
 
+class ConfigManager:
+    config = None
+
+    @staticmethod
+    def fetch_config():
+        url = "http://nodered.home.lan/weather-forecast-config"
+        response = ConfigManager.http_get(url)
+        if response:
+            try:
+                ConfigManager.config = json.loads(response)
+                print("Configuration successfully loaded.")
+            except ValueError as e:  # Use ValueError instead of JSONDecodeError
+                print("Failed to parse configuration:", e)
+                ConfigManager.config = None
+        else:
+            print("Failed to fetch configuration.")
+
+    @staticmethod
+    def http_get(url):
+        try:
+            import usocket
+            _, _, host, path = url.split("/", 3)
+            addr_info = usocket.getaddrinfo(host, 80)
+            addr = addr_info[0][-1]
+            s = usocket.socket()
+            s.connect(addr)
+            s.send(bytes(f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n", "utf8"))
+            response = b""
+            while True:
+                data = s.recv(128)
+                if not data:
+                    break
+                response += data
+            s.close()
+            headers, body = response.split(b"\r\n\r\n", 1)
+            return body.decode()
+        except Exception as e:
+            print(f"HTTP request failed: {e}")
+            return None
 
 class SkyColour:
-
     @staticmethod
     def get_colour_for_temp(temp):
+        if ConfigManager.config is None:
+            print("Configuration is not loaded.")
+            return (255, 255, 255)  # Default color or handle the error differently
+
+        temp_ranges = ConfigManager.config.get('temp_ranges', [])
         temp = math.floor(temp)
-        if temp <= 14:
-            return (0, 0, 255)
-        if temp > 14 and temp <= 17:
-            return (10, 0, 250)
-        if temp > 17 and temp <= 20:
-            return (0, 150, 255)
-        if temp > 20 and temp <= 25:
-            return (96, 133, 255)
-        if temp > 25 and temp <= 28:
-            return (150, 70, 255)
-        if temp > 28 and temp <= 33:
-            return (200, 100, 5)
-        if temp > 33 and temp <= 37:
-            return (180, 29, 70)
-        if temp > 37:
-            return (255, 0, 0)
+        for range in temp_ranges:
+            if range['min'] <= temp <= range['max']:
+                return tuple(range['color'])
+        return (255, 255, 255)  # Default color if no range matches
 
     @staticmethod
-    def get_colour_for_skycondition(cloudcover, precip):
-        cloudcover = math.floor(cloudcover * 100)
+    def get_colour_for_skycondition(precip):
         precip = math.floor(precip * 100)
+        precip_ranges = ConfigManager.config.get('precip_ranges', [])
+        for range in precip_ranges:
+            if range['min'] <= precip <= range['max']:
+                return tuple(range['color'])
+        return (0, 0, 0)  # Default color if no range matches
 
-
-
-        if precip >= 40:
-            if precip > 90:
-                return (0, 255, 0)
-            elif precip > 80:
-                return (65, 255, 65)
-            elif precip > 60:
-                return (110, 255, 110)
-
-            return (140, 255, 140)
-
-        return (0, 0, 0)
+# Example usage
+ConfigManager.fetch_config()
+color = SkyColour.get_colour_for_temp(18)
+print(color)

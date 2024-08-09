@@ -30,4 +30,19 @@ The lamp updates once per hour to avoid paying a monthly fee to use the weather 
 Unfortunately, I will not be detailing any steps to assemble this project since it was purely a learning excercise for me. What I will say is that the ESP8266 is 
 running Micropython which does all of the magic of calling the API and setting the colour of the LED lights. The rest you'll have to figure out :)
 
+## Debugging
+
+Enter these commands in the Mu REPL to debug
+
+`import main`
+
+Or
+
+```
+from weather_data import WeatherData
+weather_data = WeatherData()
+print(weather_data.get_weather())
+```
+
 Enjoy!
+

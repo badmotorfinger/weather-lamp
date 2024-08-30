@@ -7,8 +7,9 @@ class ConfigManager:
 
     @staticmethod
     def fetch_config():
+        print ("fetch_config executing")
         url = "http://nodered.home.lan/weather-forecast-config"
-        response = ConfigManager.http_get(url)
+        response = ConfigManager.__http_get(url)
         if response:
             try:
                 ConfigManager.config = json.loads(response)
@@ -20,26 +21,44 @@ class ConfigManager:
             print("Failed to fetch configuration.")
 
     @staticmethod
-    def http_get(url):
+    def __http_get(url):
         try:
-            import usocket
             _, _, host, path = url.split("/", 3)
-            addr_info = usocket.getaddrinfo(host, 80)
-            addr = addr_info[0][-1]
+            addr = None
+            # Resolve hostname with retry mechanism
+            for _ in range(3):
+                try:
+                    addr = usocket.getaddrinfo(host, 80)[0][-1]
+                    break
+                except OSError as e:
+                    print(f"Error resolving hostname: {e}")
+
+            if not addr:
+                print("Failed to resolve hostname after multiple attempts.")
+                return None
+
+            # Connect to server and retrieve data
             s = usocket.socket()
+
             s.connect(addr)
-            s.send(bytes(f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n", "utf8"))
+            request = f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+            s.send(request.encode('utf-8'))
             response = b""
             while True:
                 data = s.recv(128)
-                if not data:
+                if data:
+                    response += data
+                else:
                     break
-                response += data
-            s.close()
-            headers, body = response.split(b"\r\n\r\n", 1)
-            return body.decode()
         except Exception as e:
-            print(f"HTTP request failed: {e}")
+            print(f"Error during HTTP request: {e}")
+        finally:
+            s.close()
+
+        if response:
+            headers, json_data = response.split(b"\r\n\r\n", 1)
+            return json_data.decode('utf-8')
+        else:
             return None
 
 class SkyColour:
@@ -63,9 +82,4 @@ class SkyColour:
         for range in precip_ranges:
             if range['min'] <= precip <= range['max']:
                 return tuple(range['color'])
-        return (0, 0, 0)  # Default color if no range matches
-
-# Example usage
-ConfigManager.fetch_config()
-color = SkyColour.get_colour_for_temp(18)
-print(color)
+        return (255, 255, 255)  # Default color if no range matches

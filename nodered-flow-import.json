@@ -1,0 +1,303 @@
+[
+    {
+        "id": "b9c73ab776c117b0",
+        "type": "tab",
+        "label": "Internet Weather Data",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "b16d8b19f8bf90a3",
+        "type": "http in",
+        "z": "b9c73ab776c117b0",
+        "name": "",
+        "url": "/weather-forecast",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 320,
+        "y": 260,
+        "wires": [
+            [
+                "6ae1ae166e9f688c"
+            ]
+        ]
+    },
+    {
+        "id": "448a275c0a84830a",
+        "type": "http request",
+        "z": "b9c73ab776c117b0",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.openweathermap.org/data/2.5/forecast?lat=-33.426594576972356&lon=151.34250433993955&appid=PUT YOUR API KEY HERE",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 850,
+        "y": 440,
+        "wires": [
+            [
+                "d6ede3266d78f60e",
+                "1af0f12f8929ecca"
+            ]
+        ]
+    },
+    {
+        "id": "d6ede3266d78f60e",
+        "type": "function",
+        "z": "b9c73ab776c117b0",
+        "name": "Transform API Response",
+        "func": "// Function to extract and process data\nfunction processData(data) {\n    // Calculate average values for given entries\n    function averageData(entries) {\n        let sumTemp = 0;\n        let sumPop = 0;\n        entries.forEach(entry => {\n            //sumTemp += entry.main.temp;\n            //sumPop += entry.pop;\n            sumTemp = entry.main.temp_max > sumTemp ? entry.main.temp_max : sumTemp;\n            sumPop = entry.pop > sumPop ? entry.pop : sumPop;\n        });\n\n        return {\n            // averageTemp: (sumTemp / entries.length) - 273.15, // Converting Kelvin to Celsius\n            // averagePrecip: sumPop / entries.length\n            averageTemp: sumTemp - 273.15, // Converting Kelvin to Celsius\n            averagePrecip: sumPop \n        };\n    }\n\n    // Get current time and compare with dt_txt to find appropriate entries\n    let currentTime = new Date();\n    let oneToFourHours = [];\n    let fourToEightHours = [];\n\n    data.list.forEach(entry => {\n        let entryTime = new Date(entry.dt_txt);\n        entryTime.setHours(entryTime.getHours() + 10);\n        \n        let hoursDiff = (entryTime - currentTime) / (1000 * 60 * 60); // Difference in hours\n\n        if (hoursDiff >= 1 && hoursDiff <= 4) {\n            oneToFourHours.push(entry);\n        } else if (hoursDiff > 5 && hoursDiff <= 9) {\n            fourToEightHours.push(entry);\n        }\n    });\n\n    // Calculate averages for each period\n    let results = {\n        oneToFourHours: averageData(oneToFourHours),\n        fourToEightHours: averageData(fourToEightHours),\n        currentTemp: data.list[0].main.temp - 273.15\n    };\n\n    return results;\n}\n\n// Main function node code\nvar originalData = msg.payload; // Assuming the original JSON is stored in msg.payload\n\nvar transformedData = processData(originalData);\ntransformedData.updatedAt = new Date().toISOString();\nmsg.payload = transformedData;\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 6,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1130,
+        "y": 440,
+        "wires": [
+            [
+                "eda3720ea9b274fe",
+                "3a152c6ecd88f1c2",
+                "1af0f12f8929ecca"
+            ]
+        ]
+    },
+    {
+        "id": "a1c07ecd58224ef5",
+        "type": "http in",
+        "z": "b9c73ab776c117b0",
+        "name": "",
+        "url": "/weather-forecast-config",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 300,
+        "y": 540,
+        "wires": [
+            [
+                "c932fedbe52804db"
+            ]
+        ]
+    },
+    {
+        "id": "d8e5a4144ebfef2e",
+        "type": "http response",
+        "z": "b9c73ab776c117b0",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 870,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "c932fedbe52804db",
+        "type": "function",
+        "z": "b9c73ab776c117b0",
+        "name": "Return Weather Config Data",
+        "func": "msg.payload = {\n    \"temp_ranges\": [\n        { \"min\": -50, \"max\": 14, \"color\": [0, 0, 255] },\n        { \"min\": 15, \"max\": 16, \"color\": [10, 0, 250] },\n        { \"min\": 17, \"max\": 20, \"color\": [255, 204, 100] },\n        { \"min\": 21, \"max\": 25, \"color\": [255, 120, 100] },\n        { \"min\": 26, \"max\": 28, \"color\": [255, 102, 100] },\n        { \"min\": 29, \"max\": 33, \"color\": [255, 51, 51] },\n        { \"min\": 34, \"max\": 37, \"color\": [255, 0, 0] },\n        { \"min\": 38, \"max\": 100, \"color\": [255, 0, 0] }\n    ],\n    \"precip_ranges\": [\n        { \"min\": 0, \"max\": 39, \"color\": [0, 0, 0] },\n        { \"min\": 40, \"max\": 60, \"color\": [204, 255, 204] },\n        { \"min\": 61, \"max\": 80, \"color\": [153, 255, 153] },\n        { \"min\": 81, \"max\": 90, \"color\": [65, 255, 65] },\n        { \"min\": 91, \"max\": 100, \"color\": [0, 255, 0] }\n    ]\n};\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 620,
+        "y": 540,
+        "wires": [
+            [
+                "d8e5a4144ebfef2e"
+            ]
+        ]
+    },
+    {
+        "id": "eda3720ea9b274fe",
+        "type": "file",
+        "z": "b9c73ab776c117b0",
+        "name": "",
+        "filename": "last-response.json",
+        "filenameType": "str",
+        "appendNewline": true,
+        "createDir": false,
+        "overwriteFile": "true",
+        "encoding": "none",
+        "x": 1430,
+        "y": 440,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6ae1ae166e9f688c",
+        "type": "file in",
+        "z": "b9c73ab776c117b0",
+        "name": "",
+        "filename": "last-response.json",
+        "filenameType": "str",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 850,
+        "y": 260,
+        "wires": [
+            [
+                "6310d02bb06228c2"
+            ]
+        ]
+    },
+    {
+        "id": "3a152c6ecd88f1c2",
+        "type": "link out",
+        "z": "b9c73ab776c117b0",
+        "name": "link out 1",
+        "mode": "link",
+        "links": [
+            "e0b8a6d33fab2f30",
+            "c4a7685d3df1dca9"
+        ],
+        "x": 1355,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "25d36e2abdb3df50",
+        "type": "catch",
+        "z": "b9c73ab776c117b0",
+        "name": "",
+        "scope": [
+            "448a275c0a84830a"
+        ],
+        "uncaught": false,
+        "x": 810,
+        "y": 320,
+        "wires": [
+            [
+                "6ae1ae166e9f688c"
+            ]
+        ]
+    },
+    {
+        "id": "6310d02bb06228c2",
+        "type": "json",
+        "z": "b9c73ab776c117b0",
+        "name": "",
+        "property": "payload",
+        "action": "obj",
+        "pretty": false,
+        "x": 1070,
+        "y": 260,
+        "wires": [
+            [
+                "3a152c6ecd88f1c2"
+            ]
+        ]
+    },
+    {
+        "id": "ee9b2814a70a50cf",
+        "type": "inject",
+        "z": "b9c73ab776c117b0",
+        "name": "Fetch weather",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "600",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "timer",
+        "payload": "",
+        "payloadType": "date",
+        "x": 340,
+        "y": 440,
+        "wires": [
+            [
+                "448a275c0a84830a"
+            ]
+        ]
+    },
+    {
+        "id": "db61a493dccc8875",
+        "type": "http response",
+        "z": "b9c73ab776c117b0",
+        "name": "HTTP Response",
+        "statusCode": "200",
+        "headers": {},
+        "x": 1940,
+        "y": 260,
+        "wires": []
+    },
+    {
+        "id": "c4a7685d3df1dca9",
+        "type": "link in",
+        "z": "b9c73ab776c117b0",
+        "name": "link in 2",
+        "links": [
+            "3a152c6ecd88f1c2"
+        ],
+        "x": 1495,
+        "y": 260,
+        "wires": [
+            [
+                "d25208028f8ffaff"
+            ]
+        ]
+    },
+    {
+        "id": "d25208028f8ffaff",
+        "type": "switch",
+        "z": "b9c73ab776c117b0",
+        "name": "Is HTTP Request Source",
+        "property": "topic",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "neq",
+                "v": "timer",
+                "vt": "str"
+            }
+        ],
+        "checkall": "false",
+        "repair": false,
+        "outputs": 1,
+        "x": 1690,
+        "y": 260,
+        "wires": [
+            [
+                "db61a493dccc8875"
+            ]
+        ]
+    },
+    {
+        "id": "1af0f12f8929ecca",
+        "type": "debug",
+        "z": "b9c73ab776c117b0",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1160,
+        "y": 540,
+        "wires": []
+    }
+]

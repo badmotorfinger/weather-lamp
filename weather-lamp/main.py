@@ -127,9 +127,14 @@ while True:
         # Process weather data if available
         print("Processing weather result...")
         if weather:
-            print(f"Weather data type: {type(weather)}, length: {len(weather) if hasattr(weather, '__len__') else 'N/A'}")
-            
-            if hasattr(weather, '__len__') and len(weather) == 5:
+            try:
+                weather_len = len(weather)
+                print(f"Weather data type: {type(weather)}, length: {weather_len}")
+            except:
+                weather_len = 0
+                print(f"Weather data type: {type(weather)}, length: cannot determine")
+
+            if weather_len == 5:
                 print("Valid weather data received")
                 try:
                     temp1 = weather[0]

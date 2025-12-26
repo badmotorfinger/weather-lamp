@@ -52,12 +52,12 @@ class ConfigManager:
 
         # Connect to server and retrieve data
         s = usocket.socket()
+        response = b""
 
         try:
             s.connect(addr)
             request = f"GET /{path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
             s.send(request.encode('utf-8'))
-            response = b""
             while True:
                 data = s.recv(128)
                 if data:
@@ -79,22 +79,49 @@ class ConfigManager:
 class SkyColour:
     @staticmethod
     def get_colour_for_temp(temp):
-        if ConfigManager.config is None:
-            print("Configuration is not loaded.")
-            return (255, 255, 255)  # Default color or handle the error differently
+        # Temperature color gradient:
+        # 10°C and below: pure blue (0, 0, 255)
+        # 18°C: still blue shades
+        # 25°C: warm orange-red (255, 100, 0)
+        # 40°C and above: pure red (255, 0, 0)
 
-        temp_ranges = ConfigManager.config.get('temp_ranges', [])
-        temp = math.floor(temp)
-        for range in temp_ranges:
-            if range['min'] <= temp <= range['max']:
-                return tuple(range['color'])
-        return (255, 255, 255)  # Default color if no range matches
+        if temp <= 18:
+            return (0, 0, 255)
+        elif temp >= 40:
+            return (255, 0, 0)
+        elif temp < 25:
+            # Interpolate from blue to warm orange-red (18-25°C)
+            ratio = (temp - 18) / 7.0
+            r = int(ratio * 255)
+            g = int(ratio * 100)
+            b = int(255 - (ratio * 255))
+            return (r, g, b)
+        else:
+            # Interpolate from warm orange-red to pure red (25-40°C)
+            ratio = (temp - 25) / 15.0
+            r = 255
+            g = int(100 - (ratio * 100))
+            b = 0
+            return (r, g, b)
 
     @staticmethod
     def get_colour_for_skycondition(precip):
-        precip = math.floor(precip * 100)
-        precip_ranges = ConfigManager.config.get('precip_ranges', [])
-        for range in precip_ranges:
-            if range['min'] <= precip <= range['max']:
-                return tuple(range['color'])
-        return (255, 255, 255)  # Default color if no range matches
+        # Precipitation color gradient:
+        # 0-30%: No color (0, 0, 0)
+        # 30%: Very light green (50, 255, 50)
+        # 30-80%: Transition from light green to pure green
+        # 80% and above: Pure green (0, 255, 0)
+
+        precip_percent = precip * 100
+
+        if precip_percent < 30:
+            return (0, 0, 0)
+        elif precip_percent >= 80:
+            return (0, 255, 0)
+        else:
+            # Interpolate from light green to pure green (30-80%)
+            ratio = (precip_percent - 30) / 50.0
+            r = int(50 - (ratio * 50))
+            g = 255
+            b = int(50 - (ratio * 50))
+            return (r, g, b)

@@ -90,11 +90,12 @@ class SkyColour:
         elif temp >= 40:
             return (255, 0, 0)
         elif temp < 25:
-            # Interpolate from blue to warm orange-red (18-25°C)
+            # Interpolate from yellow-orange to warm orange-red (18-25°C)
+            # No blue component to avoid purple
             ratio = (temp - 18) / 7.0
-            r = int(ratio * 255)
-            g = int(ratio * 100)
-            b = int(255 - (ratio * 255))
+            r = 255
+            g = int(200 - (ratio * 100))  # From 200 down to 100
+            b = 0
             return (r, g, b)
         else:
             # Interpolate from warm orange-red to pure red (25-40°C)
